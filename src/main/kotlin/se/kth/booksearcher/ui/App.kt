@@ -39,7 +39,7 @@ fun App() {
                 modifier = Modifier
                     .fillMaxWidth(0.7f)
                     .onKeyEvent {
-                    if (it.key == Key.Enter) {
+                    if (it.key == Key.Enter || it.key == Key.NumPadEnter) {
                         scope.launch { viewModel.launchSearch(searchText) }
                         true
                     } else {
