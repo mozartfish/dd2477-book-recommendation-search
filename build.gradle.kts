@@ -31,11 +31,11 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "ui.MainKt"
+        mainClass = "se.kth.booksearcher.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.AppImage, TargetFormat.Dmg, TargetFormat.Exe)
-            packageName = "se.kth.booksearcher"
+            packageName = "BookSearcher"
             packageVersion = "1.0.0"
         }
     }
