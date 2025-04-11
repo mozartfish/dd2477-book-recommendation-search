@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import se.kth.booksearcher.data.Book
 
 class SearchViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -14,13 +15,13 @@ class SearchViewModel : ViewModel() {
         // TODO: Retrieve books from the search engine
         delay(1000)
         val books = listOf(
-            Book("Book 1"),
-            Book("Book 2"),
-            Book("Book 3"),
-            Book("Book 4"),
-            Book("Book 5"),
-            Book("Book 6"),
-            Book("Book 7"),
+            Book("Book 1", "", 5f, "", ""),
+            Book("Book 2", "", 5f, "", ""),
+            Book("Book 3", "", 5f, "", ""),
+            Book("Book 4", "", 5f, "", ""),
+            Book("Book 5", "", 5f, "", ""),
+            Book("Book 6", "", 5f, "", ""),
+            Book("Book 7", "", 5f, "", ""),
         )
         _uiState.value = SearchUiState(
             isProgressing = false,
