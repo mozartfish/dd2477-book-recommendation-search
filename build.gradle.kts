@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootExtension
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -27,6 +28,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.swing)
+
     // Elasticsearch dependencies
     implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.10.2")
     implementation("org.elasticsearch:elasticsearch:7.10.2")
@@ -38,7 +40,14 @@ compose.desktop {
         mainClass = "se.kth.booksearcher.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.AppImage, TargetFormat.Dmg, TargetFormat.Exe)
+            // Set target formats based on current OS
+            when (System.getProperty("os.name").toLowerCase()) {
+                in listOf("mac os x", "darwin") -> targetFormats(TargetFormat.Dmg)
+                in listOf("linux", "unix") -> targetFormats(TargetFormat.AppImage, TargetFormat.Deb)
+                in listOf("windows") -> targetFormats(TargetFormat.Exe, TargetFormat.Msi)
+                else -> targetFormats(TargetFormat.Dmg, TargetFormat.AppImage, TargetFormat.Exe)
+            }
+
             packageName = "BookSearcher"
             packageVersion = "1.0.0"
         }
