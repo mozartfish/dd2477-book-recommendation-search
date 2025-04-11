@@ -27,6 +27,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.swing)
+    // Elasticsearch dependencies
+    implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.10.2")
+    implementation("org.elasticsearch:elasticsearch:7.10.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.12.3")
 }
 
 compose.desktop {
