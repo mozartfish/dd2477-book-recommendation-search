@@ -31,6 +31,7 @@ class Book:
 
 
 def scrape_book(url: str) -> Book:
+    print(url)
     test = requests.get(url)
     soup = BeautifulSoup(test.text, "html.parser")
 
@@ -126,7 +127,7 @@ def scrape_book(url: str) -> Book:
 
 
 def scrape_best_books():
-    for page in range(1, 2):
+    for page in range(1, 50):
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -143,11 +144,31 @@ def scrape_best_books():
         bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
         for link in bookLinks:
             book = scrape_book(link)
-            book_dict = asdict(book)
+            sendToElastic(book)
+            # book_dict = asdict(book)
 
-            book_json = json.dumps(book_dict, indent=4)
+            # book_json = json.dumps(book_dict, indent=4)
 
-            print(book_json)
+            # print(book_json)
+
+
+from elasticsearch import Elasticsearch
+
+
+def sendToElastic(book: Book):
+    # es = Elasticsearch([{"host": "localhost", "port": 9200, "scheme": "https"}])
+    client = Elasticsearch(
+        hosts=["http://localhost:9200"],
+        verify_certs=False,
+        basic_auth=["USERNAME", "PASSWORD"],  # type: ignore
+        # api_key= ALTERNATIVE (USE ENCODED VERSION)
+    )
+    # print(client.cluster.health)
+
+    # print(client.ping())
+    book_dict = asdict(book)
+    print(book_dict)
+    client.index(index="books", body=book_dict)
 
 
 if __name__ == "__main__":
@@ -155,6 +176,7 @@ if __name__ == "__main__":
     # book = scrape_book(
     #     "https://www.goodreads.com/book/show/198902277-the-wedding-people?from_choice=true"
     # )
+    # sendToElastic(book)
     # book_dict = asdict(book)
 
     # book_json = json.dumps(book_dict, indent=4)
