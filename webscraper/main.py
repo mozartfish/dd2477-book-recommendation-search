@@ -19,6 +19,7 @@ class Book:
     title: str
     author: str
     authorLink: str
+    imageUrl: str
     rating: float
     ratingsCount: int
     reviewCount: int
@@ -101,6 +102,10 @@ def scrape_book(url: str) -> Book:
             raise Exception("A review text was not found.")
         cleanedText = reviewText.text  # type: ignore
         newReviews.append(Review(stars, cleanedText))  # type: ignore
+    image_tag = soup.find("img", {"class": "ResponsiveImage"})
+    image_src = image_tag["src"]  # type: ignore
+    if image_src is None:
+        raise Exception("Image not found")
 
     book = Book(
         title=title,
@@ -114,6 +119,7 @@ def scrape_book(url: str) -> Book:
         pages=pagesText,
         firstPublished=firstPublishedUnix,
         reviews=newReviews,
+        imageUrl=str(image_src),
     )
 
     return book
