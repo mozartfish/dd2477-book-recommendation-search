@@ -89,6 +89,13 @@ def scrape_book(url: str) -> Book:
     if firstPublished is None:
         raise Exception("First published date not found.")
     firstPublishedDate = firstPublished.text[16:]
+    if len(firstPublishedDate.split(", ")[1]) < 4:
+        # When the date for earlier than 1000
+        firstPublishedDate = (
+            firstPublishedDate.split(", ")[0]
+            + ", "
+            + firstPublishedDate.split(", ")[1].zfill(4)
+        )
     firstPublishedUnix = int(
         datetime.datetime.strptime(firstPublishedDate, "%B %d, %Y").timestamp()
     )
@@ -145,7 +152,7 @@ def scrape_best_books():
         bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
         for link in bookLinks:
             book = scrape_book(link)
-            sendToElastic(book)
+            # sendToElastic(book)
             # book_dict = asdict(book)
 
             # book_json = json.dumps(book_dict, indent=4)
@@ -170,10 +177,8 @@ def sendToElastic(book: Book):
 
 
 if __name__ == "__main__":
-    scrape_best_books()
-    # book = scrape_book(
-    #     "https://www.goodreads.com/book/show/198902277-the-wedding-people?from_choice=true"
-    # )
+    # scrape_best_books()
+    book = scrape_book("https://www.goodreads.com/book/show/1381.The_Odyssey")
     # sendToElastic(book)
     # book_dict = asdict(book)
 
