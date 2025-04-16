@@ -4,6 +4,7 @@ from typing import List
 import requests
 from bs4 import BeautifulSoup
 from dataclasses import asdict, dataclass
+from elasticsearch import Elasticsearch
 
 
 @dataclass
@@ -150,9 +151,6 @@ def scrape_best_books():
             # book_json = json.dumps(book_dict, indent=4)
 
             # print(book_json)
-
-
-from elasticsearch import Elasticsearch
 
 
 def sendToElastic(book: Book):
