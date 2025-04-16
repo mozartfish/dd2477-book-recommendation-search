@@ -12,14 +12,15 @@ import java.util.List;
 
 public class BookEngine implements SearchEngine{
     String serverUrl = "http://localhost:9200"; //todo: why does it need ot be http and not https?
-    String apiKey = "eVppQ1BwWUJ2dW1jSVBleHZidGc6UUs1dzZQOFF0emZuWFNsQV93ZnR1UQ==";
+//    String apiKey = "";
     ElasticsearchClient esClient;
     List<BookResponse> cachedReadBooks = new ArrayList<>();
 
     public BookEngine() {
         esClient = ElasticsearchClient.of(b -> b
                 .host(serverUrl)
-                .apiKey(apiKey)
+                .usernameAndPassword(elastic, password)
+//                .apiKey() alternative
         );
     }
 
