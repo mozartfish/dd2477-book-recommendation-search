@@ -165,7 +165,7 @@ def sendToElastic(book: Book):
     client = Elasticsearch(
         hosts=["http://localhost:9200"],
         verify_certs=False,
-        basic_auth=["USERNAME", "PASSWORD"],  # type: ignore
+        basic_auth=["elastic", "PASSWORD"],  # type: ignore
         # api_key= ALTERNATIVE (USE ENCODED VERSION)
     )
     # print(client.cluster.health)
@@ -177,8 +177,8 @@ def sendToElastic(book: Book):
 
 
 if __name__ == "__main__":
-    # scrape_best_books()
-    book = scrape_book("https://www.goodreads.com/book/show/1381.The_Odyssey")
+    scrape_best_books()
+    # book = scrape_book("https://www.goodreads.com/book/show/1381.The_Odyssey")
     # sendToElastic(book)
     # book_dict = asdict(book)
 
