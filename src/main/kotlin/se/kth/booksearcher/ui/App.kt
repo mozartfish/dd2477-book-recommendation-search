@@ -1,6 +1,8 @@
 package se.kth.booksearcher.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +23,11 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowState
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.size.Size
 import kotlinx.coroutines.launch
 import se.kth.booksearcher.data.Book
 
@@ -28,18 +35,19 @@ import se.kth.booksearcher.data.Book
 @Preview
 fun App(windowState: WindowState) {
     var book by remember { mutableStateOf<Book?>(null) }
+    val targetWidth by animateDpAsState(
+        targetValue = if (book != null) 1200.dp else 800.dp,
+        animationSpec = tween(500),
+        label = "WindowWidth",
+    )
 
-    LaunchedEffect(book) {
-        if (book != null) {
-            windowState.size = DpSize(1200.dp, windowState.size.height)
-        } else {
-            windowState.size = DpSize(800.dp, windowState.size.height)
-        }
+    LaunchedEffect(targetWidth) {
+        windowState.size = DpSize(targetWidth, windowState.size.height)
     }
 
     MaterialTheme {
         Row(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxHeight().weight(3f)) {
+            Box(Modifier.fillMaxHeight().width(800.dp)) {
                 SearchPage {
                     book = it
                 }
@@ -47,7 +55,7 @@ fun App(windowState: WindowState) {
 
             AnimatedVisibility(
                 visible = book != null,
-                modifier = Modifier.fillMaxHeight().weight(2f),
+                modifier = Modifier.fillMaxHeight().fillMaxWidth(),
             ) {
                 BookDetailPage(book!!)
             }
@@ -121,7 +129,11 @@ fun BookDetailPage(
     ) {
         if (book.imageUrl.isNotEmpty()) {
             AsyncImage(
-                model = book.imageUrl,
+                model = ImageRequest.Builder(LocalPlatformContext.current)
+                    .data(book.imageUrl)
+                    .crossfade(true)
+                    .size(Size.ORIGINAL)
+                    .build(),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
