@@ -11,6 +11,7 @@ fun listProfiles() : List<String> {
 fun loadProfile(profileName: String) : UserProfile {
     val file = File("profiles/$profileName.profile")
     return if (!file.exists()) {
+        File("profiles").mkdirs()
         file.createNewFile()
         UserProfile(profileName, emptySet())
     }else {
