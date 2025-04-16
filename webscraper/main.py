@@ -152,7 +152,7 @@ def scrape_best_books():
         bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
         for link in bookLinks:
             book = scrape_book(link)
-            # sendToElastic(book)
+            sendToElastic(book)
             # book_dict = asdict(book)
 
             # book_json = json.dumps(book_dict, indent=4)
@@ -168,11 +168,12 @@ def sendToElastic(book: Book):
         basic_auth=["elastic", "PASSWORD"],  # type: ignore
         # api_key= ALTERNATIVE (USE ENCODED VERSION)
     )
-    # print(client.cluster.health)
 
-    # print(client.ping())
+    if not client.ping():
+        raise Exception("could not connect to elasticsearch")
+
     book_dict = asdict(book)
-    print(book_dict)
+
     client.index(index="books", body=book_dict)
 
 
