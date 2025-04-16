@@ -2,9 +2,12 @@ package se.kth.booksearcher.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -14,31 +17,65 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowState
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
+import se.kth.booksearcher.data.Book
 
 @Composable
 @Preview
-fun App() {
-    MaterialTheme {
-        val viewModel = remember { SearchViewModel() }
-        val uiState by viewModel.uiState.collectAsState()
-        val scope = rememberCoroutineScope()
-        var searchText by remember { mutableStateOf("") }
+fun App(windowState: WindowState) {
+    var book by remember { mutableStateOf<Book?>(null) }
 
-        Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                "There should be a logo",
-                modifier = Modifier.padding(16.dp),
-            )
-            OutlinedTextField(
-                modifier = Modifier
-                    .fillMaxWidth(0.7f)
-                    .onKeyEvent {
+    LaunchedEffect(book) {
+        if (book != null) {
+            windowState.size = DpSize(1200.dp, windowState.size.height)
+        } else {
+            windowState.size = DpSize(800.dp, windowState.size.height)
+        }
+    }
+
+    MaterialTheme {
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxHeight().weight(3f)) {
+                SearchPage {
+                    book = it
+                }
+            }
+
+            AnimatedVisibility(
+                visible = book != null,
+                modifier = Modifier.fillMaxHeight().weight(2f),
+            ) {
+                BookDetailPage(book!!)
+            }
+        }
+    }
+}
+
+@Composable
+@Preview
+fun SearchPage(onBookClick: (Book) -> Unit) {
+    val viewModel = remember { SearchViewModel() }
+    val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    var searchText by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(48.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            "There should be a logo",
+            modifier = Modifier.padding(16.dp),
+        )
+        OutlinedTextField(
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .onKeyEvent {
                     if (it.key == Key.Enter || it.key == Key.NumPadEnter) {
                         scope.launch { viewModel.launchSearch(searchText) }
                         true
@@ -46,26 +83,83 @@ fun App() {
                         false
                     }
                 },
-                value = searchText,
-                onValueChange = { searchText = it },
-                label = { Text("Search") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                singleLine = true,
-            )
-            AnimatedVisibility(uiState.isProgressing) {
-                LinearProgressIndicator(Modifier.fillMaxWidth(0.7f).padding(top = 16.dp))
-            }
-            AnimatedVisibility(uiState.books.isNotEmpty()) {
-                LazyColumn(modifier = Modifier.padding(top = 24.dp)) {
-                    items(uiState.books) { book ->
-                        ListItem(
-                            headlineContent = { Text(book.name) },
-                            supportingContent = { Text("Placeholder") }
-                        )
-                        HorizontalDivider()
-                    }
+            value = searchText,
+            onValueChange = { searchText = it },
+            label = { Text("Search") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+            singleLine = true,
+        )
+        AnimatedVisibility(uiState.isProgressing) {
+            LinearProgressIndicator(Modifier.fillMaxWidth(0.7f).padding(top = 16.dp))
+        }
+        AnimatedVisibility(uiState.books.isNotEmpty()) {
+            LazyColumn(modifier = Modifier.padding(top = 24.dp)) {
+                items(uiState.books) { book ->
+                    ListItem(
+                        modifier = Modifier.clickable { onBookClick(book) },
+                        headlineContent = { Text(book.name) },
+                        supportingContent = { Text("Placeholder") }
+                    )
+                    HorizontalDivider()
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BookDetailPage(
+    book: Book,
+    onClose: () -> Unit = {},
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Top,
+    ) {
+        if (book.imageUrl.isNotEmpty()) {
+            AsyncImage(
+                model = book.imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(bottom = 16.dp),
+            )
+        }
+
+        Text(
+            book.name,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        Text(
+            "Author: ${book.author}",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Rating: ${book.rating}",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            "Introduction",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Text(
+            book.introduction,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

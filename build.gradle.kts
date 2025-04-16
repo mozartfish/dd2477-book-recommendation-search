@@ -28,6 +28,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.swing)
+    implementation(libs.ktor.client.java)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.ktor3)
 
     // Elasticsearch dependencies
     implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.10.2")
