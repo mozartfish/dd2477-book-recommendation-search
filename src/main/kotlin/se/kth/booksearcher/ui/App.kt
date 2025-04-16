@@ -29,6 +29,9 @@ import coil3.request.crossfade
 import coil3.size.Size
 import kotlinx.coroutines.launch
 import se.kth.booksearcher.data.Book
+import se.kth.booksearcher.data.UserProfile
+import se.kth.booksearcher.saveProfile
+import se.kth.booksearcher.userProfile
 
 @Composable
 @Preview
@@ -102,10 +105,33 @@ fun SearchPage(onBookClick: (Book) -> Unit) {
         AnimatedVisibility(uiState.books.isNotEmpty()) {
             LazyColumn(modifier = Modifier.padding(top = 24.dp)) {
                 items(uiState.books) { book ->
+                    val isRead = remember(book, userProfile) { book.name in userProfile.readBooks }
                     ListItem(
                         modifier = Modifier.clickable { onBookClick(book) },
                         headlineContent = { Text(book.name) },
-                        supportingContent = { Text("Placeholder") }
+                        supportingContent = { Text(book.author) },
+                        trailingContent = {
+                            Button(
+                                onClick = {
+                                    userProfile = UserProfile(
+                                        userProfile.username,
+                                        when (isRead) {
+                                            true -> userProfile.readBooks - book.name
+                                            false -> userProfile.readBooks + book.name
+                                        }
+                                    )
+                                    saveProfile(userProfile)
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isRead)
+                                        MaterialTheme.colorScheme.secondary
+                                    else
+                                        MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Text("Mark as read")
+                            }
+                        }
                     )
                     HorizontalDivider()
                 }
