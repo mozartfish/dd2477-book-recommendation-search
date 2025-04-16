@@ -33,9 +33,13 @@ dependencies {
     implementation(libs.coil.network.ktor3)
 
     // Elasticsearch dependencies
-    implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.10.2")
-    implementation("org.elasticsearch:elasticsearch:7.10.2")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.12.3")
+    // implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:7.10.2")
+    // implementation("org.elasticsearch:elasticsearch:7.10.2")
+    // implementation("com.fasterxml.jackson.core:jackson-databind:2.12.3")
+    implementation("co.elastic.clients:elasticsearch-java:9.0.0")
+    implementation("commons-logging:commons-logging:1.2")
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.18.3")
 }
 
 compose.desktop {

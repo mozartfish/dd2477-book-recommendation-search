@@ -105,7 +105,7 @@ fun SearchPage(onBookClick: (Book) -> Unit) {
         AnimatedVisibility(uiState.books.isNotEmpty()) {
             LazyColumn(modifier = Modifier.padding(top = 24.dp)) {
                 items(uiState.books) { book ->
-                    val isRead = remember(book, userProfile) { book.name in userProfile.readBooks }
+                    val isRead = remember(book, userProfile) { book.id in userProfile.readBooks }
                     ListItem(
                         modifier = Modifier.clickable { onBookClick(book) },
                         headlineContent = { Text(book.name) },
@@ -116,8 +116,8 @@ fun SearchPage(onBookClick: (Book) -> Unit) {
                                     userProfile = UserProfile(
                                         userProfile.username,
                                         when (isRead) {
-                                            true -> userProfile.readBooks - book.name
-                                            false -> userProfile.readBooks + book.name
+                                            true -> userProfile.readBooks - book.id
+                                            false -> userProfile.readBooks + book.id
                                         }
                                     )
                                     saveProfile(userProfile)
