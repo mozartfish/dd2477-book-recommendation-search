@@ -31,10 +31,15 @@ class Book:
     reviews: List[Review]
 
 
-def scrape_book(url: str) -> Book:
+def scrape_book(url: str) -> Book | None:
     print(url)
     test = requests.get(url)
+
     soup = BeautifulSoup(test.text, "html.parser")
+
+    if soup.find("div", {"class": "ErrorPage__top"}):
+        print("404")
+        return None
 
     titleElement = soup.find("h1", {"data-testid": "bookTitle"})
     if titleElement is None:
@@ -152,7 +157,8 @@ def scrape_best_books():
         bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
         for link in bookLinks:
             book = scrape_book(link)
-            sendToElastic(book)
+            if book:
+                sendToElastic(book)
             # book_dict = asdict(book)
 
             # book_json = json.dumps(book_dict, indent=4)
@@ -179,7 +185,7 @@ def sendToElastic(book: Book):
 
 if __name__ == "__main__":
     scrape_best_books()
-    # book = scrape_book("https://www.goodreads.com/book/show/1381.The_Odyssey")
+    # book = scrape_book("https://www.goodreads.com/book/show/7190.The_Three_Musketeers")
     # sendToElastic(book)
     # book_dict = asdict(book)
 
