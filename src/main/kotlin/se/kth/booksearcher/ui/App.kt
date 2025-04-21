@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,7 +24,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.window.rememberWindowState
 import androidx.constraintlayout.compose.ConstraintLayout
 import booksearcher.generated.resources.Res
 import booksearcher.generated.resources.logo
@@ -53,24 +56,22 @@ fun App(windowState: WindowState) {
         windowState.size = DpSize(targetWidth, windowState.size.height)
     }
 
-    MaterialTheme {
-        Row(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxHeight().width(800.dp)) {
-                SearchPage {
-                    book = it
-                }
+    Row(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxHeight().width(800.dp)) {
+            SearchPage {
+                book = it
             }
+        }
 
-            AnimatedVisibility(
-                visible = book != null,
-                modifier = Modifier.fillMaxHeight().fillMaxWidth(),
-            ) {
-                book?.let {
-                    BookDetailPage(
-                        book = it,
-                        onClose = { book = null },
-                    )
-                }
+        AnimatedVisibility(
+            visible = book != null,
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(),
+        ) {
+            book?.let {
+                BookDetailPage(
+                    book = it,
+                    onClose = { book = null },
+                )
             }
         }
     }
@@ -83,12 +84,24 @@ fun SearchPage(onBookClick: (Book) -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
     val hasSearchResults = uiState.books.isNotEmpty()
     val scope = rememberCoroutineScope()
-    var searchText by remember { mutableStateOf("") }
 
-    ConstraintLayout(
-        modifier = Modifier.fillMaxSize().padding(48.dp),
-    ) {
-        val (logo, searchField, progressBar, books) = createRefs()
+    var searchText by remember { mutableStateOf("") }
+    var switchingProfile by remember { mutableStateOf(false) }
+
+    if (switchingProfile) {
+        Window(
+            onCloseRequest = { switchingProfile = false },
+            title = "Switch Profile",
+            state = rememberWindowState(size = DpSize(400.dp, 600.dp)),
+        ) {
+            ProfileManager {
+                switchingProfile = false
+            }
+        }
+    }
+
+    ConstraintLayout(Modifier.fillMaxSize().padding(48.dp)) {
+        val (logo, profileButton, searchField, progressBar, books) = createRefs()
         AnimatedVisibility(
             visible = !hasSearchResults,
             enter = slideInVertically(tween(500)),
@@ -105,6 +118,22 @@ fun SearchPage(onBookClick: (Book) -> Unit) {
                 painterResource(Res.drawable.logo),
                 contentDescription = "Logo",
             )
+        }
+        IconButton(
+            modifier = Modifier.constrainAs(profileButton) {
+                end.linkTo(searchField.start, margin = 24.dp)
+                top.linkTo(searchField.top)
+                bottom.linkTo(searchField.bottom)
+            },
+            onClick = {
+                switchingProfile = true
+            },
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
+            ),
+        ) {
+            Icon(Icons.Filled.Person, contentDescription = "Profile")
         }
         OutlinedTextField(
             modifier = Modifier
@@ -172,10 +201,11 @@ fun SearchPage(onBookClick: (Book) -> Unit) {
                                     saveProfile(userProfile)
                                 },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isRead)
+                                    containerColor = if (isRead) {
                                         MaterialTheme.colorScheme.secondary
-                                    else
+                                    } else {
                                         MaterialTheme.colorScheme.primary
+                                    }
                                 )
                             ) {
                                 Text("Mark as read")
