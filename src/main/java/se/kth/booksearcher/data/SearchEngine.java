@@ -1,11 +1,13 @@
 package se.kth.booksearcher.data;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.List;
 
 
 
 public interface SearchEngine {
-    void setProfile(UserProfile userProfile);
-    List<Book> search(String query);
-    void addReadBook(String id);
+    void setProfile(@NotNull UserProfile userProfile);
+    List<Book> search(@NotNull String query);
+    void addReadBook(@NotNull String id);
 }

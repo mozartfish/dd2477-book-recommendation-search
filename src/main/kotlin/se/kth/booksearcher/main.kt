@@ -14,6 +14,7 @@ import se.kth.booksearcher.ui.App
 import se.kth.booksearcher.ui.ProfileManager
 
 var userProfile by mutableStateOf(loadProfile("Default"))
+val searchEngine = FakeSearchEngine
 
 fun main() = application {
     var switchingProfile by remember { mutableStateOf(false) }

@@ -5,6 +5,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.IdsQuery;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,13 +20,13 @@ public class BookEngine implements SearchEngine{
     public BookEngine() {
         esClient = ElasticsearchClient.of(b -> b
                 .host(serverUrl)
-                .usernameAndPassword(elastic, password)
+//                .usernameAndPassword(elastic, password)
 //                .apiKey() alternative
         );
     }
 
     @Override
-    public void setProfile(UserProfile userProfile) {
+    public void setProfile(@NotNull UserProfile userProfile) {
         List<String> ids = userProfile.readBooks().stream().toList();
         var idsQuery = IdsQuery.of(idq -> idq.values(ids));
         try {
@@ -45,7 +46,7 @@ public class BookEngine implements SearchEngine{
     }
 
     @Override
-    public List<Book> search(String query) {
+    public List<Book> search(@NotNull String query) {
         List<Book> result = new ArrayList<>();
         try {
 
@@ -70,7 +71,7 @@ public class BookEngine implements SearchEngine{
     }
 
     @Override
-    public void addReadBook(String id) {
+    public void addReadBook(@NotNull String id) {
         try {
             SearchResponse<BookResponse> searchResult = esClient.search(s -> s
                     .index(("books"))
