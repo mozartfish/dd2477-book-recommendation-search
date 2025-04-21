@@ -27,6 +27,7 @@ dependencies {
     compileOnly(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.constraintlayout.compose)
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.ktor.client.java)
     implementation(libs.coil.compose)
