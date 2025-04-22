@@ -5,22 +5,24 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.IdsQuery;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import kotlin.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BookEngine implements SearchEngine{
+public class BookEngine implements SearchEngine {
     String serverUrl = "http://localhost:9200"; //todo: why does it need ot be http and not https?
-//    String apiKey = "";
+    //    String apiKey = "";
     ElasticsearchClient esClient;
-    List<BookResponse> cachedReadBooks = new ArrayList<>();
+
+    List<Pair<String, BookResponse>> cachedReadBooks = new ArrayList<>();
 
     public BookEngine() {
         esClient = ElasticsearchClient.of(b -> b
-                .host(serverUrl)
-//                .usernameAndPassword(elastic, password)
+                        .host(serverUrl)
+//                        .usernameAndPassword("elastic", "password")
 //                .apiKey() alternative
         );
     }
@@ -35,7 +37,7 @@ public class BookEngine implements SearchEngine{
                     .query(q -> q.ids(idsQuery)), BookResponse.class);
             cachedReadBooks = new ArrayList<>();
             for (Hit<BookResponse> hit : searchResult.hits().hits()) {
-                cachedReadBooks.add(hit.source());
+                cachedReadBooks.add(new Pair<>(hit.id(), hit.source()));
             }
 
         } catch (IOException e) {
@@ -81,10 +83,15 @@ public class BookEngine implements SearchEngine{
             if (hits.size() != 1) {
                 throw new Exception("Could not find book by id");
             }
-            cachedReadBooks.add(hits.getFirst().source());
+            cachedReadBooks.add(new Pair<>(hits.getFirst().id(), hits.getFirst().source()));
 
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public void removeReadBook(@NotNull String id) {
+        cachedReadBooks.removeIf(bookIdPair -> bookIdPair.component1().equals(id));
     }
 }
