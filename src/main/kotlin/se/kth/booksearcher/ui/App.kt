@@ -40,6 +40,7 @@ import org.jetbrains.compose.resources.painterResource
 import se.kth.booksearcher.data.Book
 import se.kth.booksearcher.data.UserProfile
 import se.kth.booksearcher.saveProfile
+import se.kth.booksearcher.searchEngine
 import se.kth.booksearcher.userProfile
 
 @Composable
@@ -191,13 +192,13 @@ fun SearchPage(onBookClick: (Book) -> Unit) {
                         trailingContent = {
                             Button(
                                 onClick = {
-                                    userProfile = UserProfile(
-                                        userProfile.username,
-                                        when (isRead) {
-                                            true -> userProfile.readBooks - book.id
-                                            false -> userProfile.readBooks + book.id
-                                        }
-                                    )
+                                    if (isRead) {
+                                        searchEngine.removeReadBook(book.id)
+                                        userProfile = UserProfile(userProfile.username, userProfile.readBooks - book.id)
+                                    } else {
+                                        searchEngine.addReadBook(book.id)
+                                        userProfile = UserProfile(userProfile.username, userProfile.readBooks + book.id)
+                                    }
                                     saveProfile(userProfile)
                                 },
                                 colors = ButtonDefaults.buttonColors(

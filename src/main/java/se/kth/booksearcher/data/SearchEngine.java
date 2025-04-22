@@ -10,4 +10,5 @@ public interface SearchEngine {
     void setProfile(@NotNull UserProfile userProfile);
     List<Book> search(@NotNull String query);
     void addReadBook(@NotNull String id);
+    void removeReadBook(@NotNull String id);
 }

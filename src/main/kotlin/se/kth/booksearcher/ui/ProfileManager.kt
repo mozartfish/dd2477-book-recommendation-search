@@ -12,10 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import se.kth.booksearcher.listProfiles
-import se.kth.booksearcher.loadProfile
-import se.kth.booksearcher.saveProfile
-import se.kth.booksearcher.userProfile
+import se.kth.booksearcher.*
 
 @Composable
 @Preview
@@ -52,6 +49,7 @@ fun ProfileManager(onClose: () -> Unit = {}) {
                         onClick = {
                             saveProfile(userProfile)
                             userProfile = loadProfile(profile)
+                            searchEngine.setProfile(userProfile)
                             onClose()
                         },
                     ) {
@@ -104,6 +102,7 @@ fun ProfileManager(onClose: () -> Unit = {}) {
                         if (newProfileName.isNotBlank()) {
                             saveProfile(userProfile)
                             userProfile = loadProfile(newProfileName)
+                            searchEngine.setProfile(userProfile)
                             onClose()
                         }
                     },
