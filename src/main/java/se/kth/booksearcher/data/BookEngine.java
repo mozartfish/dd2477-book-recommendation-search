@@ -26,7 +26,7 @@ public class BookEngine implements SearchEngine {
     public BookEngine() {
         esClient = ElasticsearchClient.of(b -> b
                         .host(serverUrl)
-                        .usernameAndPassword("elastic", "mWQ787fk")
+//                        .usernameAndPassword("elastic", "password")
 //                .apiKey() alternative
         );
     }
