@@ -3,6 +3,7 @@ package se.kth.booksearcher.data;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.IdsQuery;
+import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import kotlin.Pair;
@@ -17,6 +18,7 @@ public class BookEngine implements SearchEngine {
     //    String apiKey = "";
     ElasticsearchClient esClient;
 
+    // List of Pairs, first component being the ID and second component being the book information
     List<Pair<String, BookResponse>> cachedReadBooks = new ArrayList<>();
 
     public BookEngine() {
@@ -39,7 +41,6 @@ public class BookEngine implements SearchEngine {
             for (Hit<BookResponse> hit : searchResult.hits().hits()) {
                 cachedReadBooks.add(new Pair<>(hit.id(), hit.source()));
             }
-
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -48,10 +49,8 @@ public class BookEngine implements SearchEngine {
     }
 
     @Override
-    public List<Book> search(@NotNull String query) {
-        List<Book> result = new ArrayList<>();
+    public @NotNull List<Book> search(@NotNull String query) {
         try {
-
             SearchResponse<BookResponse> searchResult = esClient.search(s -> s
                             .index("books")
                             .query(q -> q
@@ -61,29 +60,34 @@ public class BookEngine implements SearchEngine {
                             ),
                     BookResponse.class
             );
-            for (Hit<BookResponse> hit : searchResult.hits().hits()) {
-                assert hit.source() != null;
-                result.add(new Book(hit.source(), hit.id()));
-            }
+            return relevanceFeedback(searchResult);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
 
-        return result;
+    // Relevance feedback based on results that elasticsearch provided from the querystring
+    // The order of the returned list is the order that will show up in the UI
+    // If you want to do relevance feedback directly in the query (like assignment 3) you will have to modify the search function instaed of this one
+    private @NotNull List<Book> relevanceFeedback(SearchResponse<BookResponse> searchResult) {
+        //temporary, keeps same order as elasticsearch provided
+        return searchResult.hits().hits().stream().map(b -> {
+            assert b.source() != null; // keep typechecker happy
+            return new Book(b.source(), b.id());
+        }).toList();
     }
 
     @Override
     public void addReadBook(@NotNull String id) {
         try {
-            SearchResponse<BookResponse> searchResult = esClient.search(s -> s
-                    .index(("books"))
-                    .size(1)
-                    .query(q -> q.ids(IdsQuery.of(iq -> iq.values(id)))), BookResponse.class);
-            List<Hit<BookResponse>> hits = searchResult.hits().hits();
-            if (hits.size() != 1) {
+            GetResponse<BookResponse> response = esClient.get(g -> g
+                    .index("books")
+                    .id(id), BookResponse.class);
+            if (response.found()) {
+                cachedReadBooks.add(new Pair<>(response.id(), response.source()));
+            } else {
                 throw new Exception("Could not find book by id");
             }
-            cachedReadBooks.add(new Pair<>(hits.getFirst().id(), hits.getFirst().source()));
 
         } catch (Exception e) {
             throw new RuntimeException(e);
