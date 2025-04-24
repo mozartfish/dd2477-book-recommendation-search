@@ -34,4 +34,7 @@ object FakeSearchEngine : SearchEngine {
 
     override fun addReadBook(id: String) {
     }
+
+    override fun removeReadBook(id: String) {
+    }
 }
