@@ -3,6 +3,8 @@ package se.kth.booksearcher.data;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.IdsQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Like;
+import co.elastic.clients.elasticsearch._types.query_dsl.LikeDocument;
 import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
@@ -51,15 +53,46 @@ public class BookEngine implements SearchEngine {
     @Override
     public @NotNull List<Book> search(@NotNull String query) {
         try {
+//            SearchResponse<BookResponse> searchResult = esClient.search(s -> s
+//                            .index("books")
+//                            .query(q -> q
+//                                    .simpleQueryString(sqs -> sqs
+//                                            .query(query)
+//                                    )
+//                            ),
+//                    BookResponse.class
+//            );
+            for (Pair<String, BookResponse> cachedReadBook : cachedReadBooks) {
+                System.out.println(cachedReadBook.component1());
+            }
             SearchResponse<BookResponse> searchResult = esClient.search(s -> s
                             .index("books")
                             .query(q -> q
-                                    .simpleQueryString(sqs -> sqs
-                                            .query(query)
-                                    )
+                                    .bool(bq -> {
+                                        bq.should(q1 -> q1
+                                                // basic query
+                                                .simpleQueryString(sqs -> sqs
+                                                        .fields(List.of("author", "description", "genres", "title"))
+                                                        .query(query)));
+                                        // if the list is empty the query crashes
+                                        if (!cachedReadBooks.isEmpty()) {
+                                            bq.should(q2 -> q2
+                                                    .moreLikeThis(mls -> mls
+                                                            .fields(List.of("author", "genres"))
+                                                            // turns the cachedReadBooks into a list of ids which is run with the morelikethis query
+                                                            .like(cachedReadBooks.stream()
+                                                                    .map(cb -> Like
+                                                                            .of(l -> l
+                                                                            .document(ld -> ld
+                                                                                    .index("books")
+                                                                                    .id(cb.component1()))))
+                                                                    .toList())
+                                                            .boost(0.5F)));
+                                        }
+                                        return bq;
+                                    })
                             ),
-                    BookResponse.class
-            );
+                    BookResponse.class);
             return relevanceFeedback(searchResult);
         } catch (IOException e) {
             throw new RuntimeException(e);
