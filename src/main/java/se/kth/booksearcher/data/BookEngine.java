@@ -74,13 +74,15 @@ public class BookEngine implements SearchEngine {
                                                 .simpleQueryString(sqs -> sqs
                                                         .fields(List.of("author", "description", "genres", "title"))
                                                         .query(query)));
-                                        // if the list is empty the query
+                                        // if the list is empty the query crashes
                                         if (!cachedReadBooks.isEmpty()) {
                                             bq.should(q2 -> q2
                                                     .moreLikeThis(mls -> mls
                                                             .fields(List.of("author", "genres"))
+                                                            // turns the cachedReadBooks into a list of ids which is run with the morelikethis query
                                                             .like(cachedReadBooks.stream()
-                                                                    .map(cb -> Like.of(l -> l
+                                                                    .map(cb -> Like
+                                                                            .of(l -> l
                                                                             .document(ld -> ld
                                                                                     .index("books")
                                                                                     .id(cb.component1()))))
