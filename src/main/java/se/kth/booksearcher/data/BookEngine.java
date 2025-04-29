@@ -52,10 +52,6 @@ public class BookEngine implements SearchEngine {
         System.out.println(cachedReadBook.component1());
       }
 
-      // information about first book
-      String firstReadBook =
-          cachedReadBooks.isEmpty() ? null : cachedReadBooks.getFirst().component1();
-
       // boolean query builder
       BoolQuery.Builder booleanQueryBuilder = new BoolQuery.Builder();
 
@@ -63,10 +59,11 @@ public class BookEngine implements SearchEngine {
       SimpleQueryStringQuery simpleQuery = buildSimpleStringQuery(query);
       booleanQueryBuilder.should(simpleQuery._toQuery());
 
-      // if the user has like a bunch of books
-      if (firstReadBook != null) {
-        MoreLikeThisQuery moreLikeThisQuery = buildMoreLikeThisQuery(firstReadBook);
-        booleanQueryBuilder.should(moreLikeThisQuery._toQuery());
+      // if user has read previous books
+      if (!cachedReadBooks.isEmpty()) {
+        List<String> readBookIDs = cachedReadBooks.stream().map(pair -> pair.component1()).toList();
+        MoreLikeThisQuery enhancedQuery = buildMoreLikeThisQuery(readBookIDs);
+        booleanQueryBuilder.should(enhancedQuery._toQuery());
       }
 
       // build query
@@ -86,6 +83,7 @@ public class BookEngine implements SearchEngine {
 
   /**
    * Process the elastic search query to return a list of books
+   *
    * @param searchRequest information requested by user (book response format)
    * @return convert the information retrieved from elastic search to a list
    */
@@ -101,48 +99,44 @@ public class BookEngine implements SearchEngine {
   }
 
   /**
-   * Function for creating more like this query - more personalized search
-   * @param firstReadBook - the first book the user has if read if the list is not empty
-   * @return - elastic search more-like-this-query
+   * Construct a more like this query to refine the results based on the previous books the user has
+   * read
+   *
+   * @param readBookIDs ids of the books the user has read
+   * @return a more like this query
    */
-  private MoreLikeThisQuery buildMoreLikeThisQuery(String firstReadBook) {
-    LikeDocument document = new LikeDocument.Builder().index("books").id(firstReadBook).build();
-    Like like = Like.of(l -> l.document(document));
+  private MoreLikeThisQuery buildMoreLikeThisQuery(List<String> readBookIDs) {
+    List<Like> likeDocuments =
+        readBookIDs.stream()
+            .map(
+                id -> {
+                  LikeDocument document = new LikeDocument.Builder().index("books").id(id).build();
+                  return Like.of(l -> l.document(document));
+                })
+            .toList();
 
     return new MoreLikeThisQuery.Builder()
-        .fields(List.of("author", "genres"))
-        .like(List.of(like))
+        .fields(List.of("author", "genres", "description", "rating", "reviews.txt"))
+        .like(likeDocuments)
+        .minTermFreq(1) // include terms that appear at least once
+        .maxQueryTerms(25) // get the top 25 most relevant terms to influence the search
+        .minimumShouldMatch("30%") // results contain at least 30% of the query terms
         .boost(0.5F)
         .build();
   }
 
   /**
    * builds a general boolean text query for a broad text search
+   *
    * @param query - the request by the user
    * @return elastic search simple query
    */
   private SimpleQueryStringQuery buildSimpleStringQuery(@NotNull String query) {
     return new SimpleQueryStringQuery.Builder()
-        .fields(List.of("author", "description", "genres", "title"))
+        .fields(List.of("author", "description", "genres", "title", "rating", "reviews.txt"))
         .query(query)
         .build();
   }
-
-  //  // Relevance feedback based on results that elasticsearch provided from the querystring
-  //  // The order of the returned list is the order that will show up in the UI
-  //  // If you want to do relevance feedback directly in the query (like assignment 3) you will
-  // have to
-  //  // modify the search function instaed of this one
-  //  private @NotNull List<Book> relevanceFeedback(SearchResponse<BookResponse> searchResult) {
-  //    // temporary, keeps same order as elasticsearch provided
-  //    return searchResult.hits().hits().stream()
-  //        .map(
-  //            b -> {
-  //              assert b.source() != null; // keep typechecker happy
-  //              return new Book(b.source(), b.id());
-  //            })
-  //        .toList();
-  //  }
 
   @Override
   public void addReadBook(@NotNull String id) {
