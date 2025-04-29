@@ -93,7 +93,8 @@ def scrape_book(url: str) -> Book | None:
     firstPublished = soup.find("p", {"data-testid": "publicationInfo"})
     if firstPublished is None:
         raise Exception("First published date not found.")
-    firstPublishedDate = firstPublished.text[16:]
+    firstPublishedDate = firstPublished.text.lower().split("published")[1].strip()
+
     if len(firstPublishedDate.split(", ")[1]) < 4:
         # When the date for earlier than 1000
         firstPublishedDate = (
@@ -185,8 +186,9 @@ def sendToElastic(book: Book):
 
 if __name__ == "__main__":
     scrape_best_books()
-    # book = scrape_book("https://www.goodreads.com/book/show/7190.The_Three_Musketeers")
+    # book = scrape_book("https://www.goodreads.com/book/show/8852.Macbeth")
     # sendToElastic(book)
+    # print(book.firstPublished)
     # book_dict = asdict(book)
 
     # book_json = json.dumps(book_dict, indent=4)
