@@ -3,18 +3,18 @@ package se.kth.booksearcher
 import se.kth.booksearcher.data.UserProfile
 import java.io.File
 
-fun listProfiles() : List<String> {
+fun listProfiles(): List<String> {
     val dir = File("profiles")
     return dir.listFiles()?.map { it.nameWithoutExtension } ?: emptyList()
 }
 
-fun loadProfile(profileName: String) : UserProfile {
+fun loadProfile(profileName: String): UserProfile {
     val file = File("profiles/$profileName.profile")
     return if (!file.exists()) {
         File("profiles").mkdirs()
         file.createNewFile()
         UserProfile(profileName, emptySet())
-    }else {
+    } else {
         UserProfile(profileName, file.readLines().toSet())
     }
 }

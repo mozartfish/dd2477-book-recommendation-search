@@ -9,13 +9,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import se.kth.booksearcher.data.BookEngine
 import se.kth.booksearcher.ui.App
 
 var userProfile by mutableStateOf(loadProfile("Default"))
-val searchEngine = FakeSearchEngine
+
+//val searchEngine = FakeSearchEngine
+val searchEngine = BookEngine();
 
 fun main() = application {
-    val windowState = rememberWindowState(size = DpSize(800.dp, 600.dp),)
+    val windowState = rememberWindowState(size = DpSize(800.dp, 600.dp))
     Window(
         onCloseRequest = ::exitApplication,
         title = "BookSearcher",
