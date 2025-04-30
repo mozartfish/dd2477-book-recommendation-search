@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import json
 from typing import List
@@ -141,7 +142,7 @@ def scrape_book(url: str) -> Book | None:
 
 
 def scrape_best_books():
-    for page in range(1, 50):
+    for page in range(1, 101):
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -156,15 +157,20 @@ def scrape_best_books():
         books = soup.find_all("tr", {"itemtype": "http://schema.org/Book"})
         # print(test.text)
         bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
-        for link in bookLinks:
-            book = scrape_book(link)
-            if book:
-                sendToElastic(book)
-            # book_dict = asdict(book)
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            executor.map(scrape_and_process_book, bookLinks)
 
-            # book_json = json.dumps(book_dict, indent=4)
 
-            # print(book_json)
+def scrape_and_process_book(link: str):
+    try:
+        book = scrape_book(link)
+    except:
+        print(f"Book: {link} failed to scrape")
+        return
+
+    if book:
+        # pass
+        sendToElastic(book)
 
 
 def sendToElastic(book: Book):
