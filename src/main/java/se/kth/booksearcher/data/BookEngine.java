@@ -28,9 +28,9 @@ public class BookEngine implements SearchEngine {
 
   // boosting factors
   public static final float CONTENT_WEIGHT = 0.4F;
-  public static final float PREFERENCES_WEIGHT = 0.6F;
-  public static final float FIRST_PUBLISHED_WEIGHT = 0.3F;
-  public static final float RATING_COUNT_WEIGHT = 0.2f;
+  public static final float USER_PREFERENCES_WEIGHT = 0.6F;
+  public static final float LESS_FREQUENTED_GENRES = 0.3F;
+  public static final float RATING_COUNT_WEIGHT = 0.2F;
 
   public BookEngine() {
     esClient =
@@ -86,7 +86,7 @@ public class BookEngine implements SearchEngine {
             book.author(), authorPreferences.getOrDefault(book.author(), 0.0) + 1.0);
       }
 
-      // Normalize preferences
+      // normalize preferences
       normalizePreferences(genrePreferences);
       normalizePreferences(authorPreferences);
     }
@@ -133,16 +133,20 @@ public class BookEngine implements SearchEngine {
         booleanQueryBuilder.should(preferenceBoostQuery);
       }
 
+      // boost less frequented genres
+      Query lessFrequentedGenreQuery = buildHiddenGenresQuery();
+      booleanQueryBuilder.should(lessFrequentedGenreQuery).boost(LESS_FREQUENTED_GENRES);
+
       // Collaborative Filtering
       // more like this query
       if (!cachedReadBooks.isEmpty()) {
         MoreLikeThisQuery moreLikeThisQuery = buildMoreLikeThisQuery(cachedReadBooks);
-        booleanQueryBuilder.should(moreLikeThisQuery._toQuery()).boost(PREFERENCES_WEIGHT);
+        booleanQueryBuilder.should(moreLikeThisQuery._toQuery()).boost(USER_PREFERENCES_WEIGHT);
       }
-      
+
       // popularity - based on the number of reviews (review count field)
-      Query popularityQuery = buildPopularityBoostQuery();
-      booleanQueryBuilder.should(popularityQuery).boost(RATING_COUNT_WEIGHT);
+      Query reviewPopularityQuery = buildPopularityBoostQuery();
+      booleanQueryBuilder.should(reviewPopularityQuery).boost(RATING_COUNT_WEIGHT);
 
       // complete query
       Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
@@ -154,44 +158,36 @@ public class BookEngine implements SearchEngine {
       // process query and return result
       return queryResult(searchRequest);
 
-      //            SearchResponse<BookResponse> searchResult = esClient.search(s -> s
-      //                            .index("books")
-      //                            .query(q -> q
-      //                                    .bool(bq -> {
-      //                                        bq.should(q1 -> q1
-      //                                                // basic query
-      //                                                .simpleQueryString(sqs -> sqs
-      //                                                        .fields(List.of("author",
-      // "description", "genres", "title"))
-      //                                                        .query(query)));
-      //                                        // if the list is empty the query crashes
-      //                                        if (!cachedReadBooks.isEmpty()) {
-      //                                            bq.should(q2 -> q2
-      //                                                    .moreLikeThis(mls -> mls
-      //                                                            .fields(List.of("author",
-      // "genres"))
-      //                                                            // turns the cachedReadBooks
-      // into a list of ids which is run with the morelikethis query
-      //                                                            .like(cachedReadBooks.stream()
-      //                                                                    .map(cb -> Like
-      //                                                                            .of(l -> l
-      //                                                                            .document(ld ->
-      // ld
-      //
-      // .index("books")
-      //
-      // .id(cb.component1()))))
-      //                                                                    .toList())
-      //                                                            .boost(0.5F)));
-      //                                        }
-      //                                        return bq;
-      //                                    })
-      //                            ),
-      //                    BookResponse.class);
-      //            return relevanceFeedback(searchResult);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Query that boosts genres that the user has read less frequently
+   *
+   * @return
+   */
+  private Query buildHiddenGenresQuery() {
+    HashMap<String, Double> lessFrequentedGenres = new HashMap<>();
+
+    // Find genres that are less frequently read
+    genrePreferences.entrySet().stream()
+        .filter(entry -> entry.getValue() > 0.1 && entry.getValue() < 0.4)
+        .forEach(entry -> lessFrequentedGenres.put(entry.getKey(), 0.3));
+
+    BoolQuery.Builder diversityBuilder = new BoolQuery.Builder();
+
+    // boost each genre
+    for (HashMap.Entry<String, Double> entry : lessFrequentedGenres.entrySet()) {
+      diversityBuilder.should(
+          new Query.Builder()
+              .match(
+                  m -> m.field("genres").query(entry.getKey()).boost(entry.getValue().floatValue()))
+              .build());
+    }
+
+    return new Query.Builder().bool(diversityBuilder.build()).build();
   }
 
   /**
