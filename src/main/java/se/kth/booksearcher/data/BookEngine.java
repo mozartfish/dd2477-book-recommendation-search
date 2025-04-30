@@ -118,7 +118,7 @@ public class BookEngine implements SearchEngine {
         System.out.println(cachedReadBook.component1());
       }
 
-      // Content- Based Filtering
+      // Content-Based Filtering
       // boolean query builder
       BoolQuery.Builder booleanQueryBuilder = new BoolQuery.Builder();
 
@@ -132,15 +132,20 @@ public class BookEngine implements SearchEngine {
         Query preferenceBoostQuery = buildPreferenceBoostQuery();
         booleanQueryBuilder.should(preferenceBoostQuery);
       }
-      //
-      //      // more like this query
-      //      if (!cachedReadBooks.isEmpty()) {
-      //        MoreLikeThisQuery moreLikeThisQuery = buildMoreLikeThisQuery(cachedReadBooks);
-      //        booleanQueryBuilder.should(moreLikeThisQuery._toQuery());
-      //      }
-      //
-            // complete query
-            Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
+
+      // Collaborative Filtering
+      // more like this query
+      if (!cachedReadBooks.isEmpty()) {
+        MoreLikeThisQuery moreLikeThisQuery = buildMoreLikeThisQuery(cachedReadBooks);
+        booleanQueryBuilder.should(moreLikeThisQuery._toQuery()).boost(PREFERENCES_WEIGHT);
+      }
+      
+      // popularity - based on the number of reviews (review count field)
+      Query popularityQuery = buildPopularityBoostQuery();
+      booleanQueryBuilder.should(popularityQuery).boost(RATING_COUNT_WEIGHT);
+
+      // complete query
+      Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
       //
       // search request
       SearchResponse<BookResponse> searchRequest =
@@ -190,7 +195,29 @@ public class BookEngine implements SearchEngine {
   }
 
   /**
+   * Construct a query that boosts books based on the rating count - the more ratings left, the more
+   * popular????
+   *
+   * @return query that uses rating count
+   */
+  private Query buildPopularityBoostQuery() {
+    return new Query.Builder()
+        .functionScore(
+            fs ->
+                fs.query(q -> q.matchAll(m -> m))
+                    .functions(
+                        f ->
+                            f.fieldValueFactor(
+                                fvf ->
+                                    fvf.field("ratingsCount") // rating count for popularity
+                                        .modifier(FieldValueFactorModifier.Log1p) // log scaling
+                                        .factor(0.4))))
+        .build();
+  }
+
+  /**
    * Query that boosts results based on users favorite genres and authors
+   *
    * @return query that uses favorite genres and authors
    */
   private Query buildPreferenceBoostQuery() {
@@ -270,11 +297,11 @@ public class BookEngine implements SearchEngine {
 
     // Build and return the more_like_this query
     return new MoreLikeThisQuery.Builder()
-        .fields(List.of("author", "genres"))
+        .fields(List.of("author", "genres", "description"))
         .like(likeDocuments)
         .boost(0.5F) // weight given to personalization
         .minTermFreq(1) // include terms that appear at least once
-        .maxQueryTerms(12) // get top terms to influence the search
+        .maxQueryTerms(15) // get top terms to influence the search
         .minimumShouldMatch("30%") // results contain at least 30% of the query terms
         .build();
   }
