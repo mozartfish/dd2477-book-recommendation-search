@@ -157,7 +157,7 @@ def scrape_best_books():
         books = soup.find_all("tr", {"itemtype": "http://schema.org/Book"})
         # print(test.text)
         bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=50) as executor:
             executor.map(scrape_and_process_book, bookLinks)
 
 
