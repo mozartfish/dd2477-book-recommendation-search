@@ -12,7 +12,7 @@ from elasticsearch import Elasticsearch
 class Review:
 
     stars: int
-    text: str
+    # text: str
 
 
 @dataclass

@@ -22,8 +22,15 @@ public class BookEngine implements SearchEngine {
   // List of Pairs, first component being the ID and second component being the book information
   List<Pair<String, BookResponse>> cachedReadBooks = new ArrayList<>();
 
+  // user preference data - store frequency information
   HashMap<String, Double> genrePreferences = new HashMap<>();
   HashMap<String, Double> authorPreferences = new HashMap<>();
+
+  // boosting factors
+  public static final float CONTENT_WEIGHT = 0.4F;
+  public static final float PREFERENCES_WEIGHT = 0.6F;
+  public static final float FIRST_PUBLISHED_WEIGHT = 0.3F;
+  public static final float RATING_COUNT_WEIGHT = 0.2f;
 
   public BookEngine() {
     esClient =
@@ -45,12 +52,15 @@ public class BookEngine implements SearchEngine {
         cachedReadBooks.add(new Pair<>(hit.id(), hit.source()));
       }
 
+      // compute the user preferences based on the profile upload
       computeUserPreferences();
+
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
 
+  /** Count and store user favorite authors and genres */
   private void computeUserPreferences() {
     genrePreferences = new HashMap<>();
     authorPreferences = new HashMap<>();
@@ -70,7 +80,7 @@ public class BookEngine implements SearchEngine {
         }
       }
 
-      // process author
+      // process authors
       if (book.author() != null) {
         authorPreferences.put(
             book.author(), authorPreferences.getOrDefault(book.author(), 0.0) + 1.0);
@@ -82,15 +92,20 @@ public class BookEngine implements SearchEngine {
     }
   }
 
+  /**
+   * Map preference scores to 0.0 - 1.0
+   *
+   * @param preferences
+   */
   private void normalizePreferences(HashMap<String, Double> preferences) {
     if (preferences.isEmpty()) {
       return;
     }
 
-    // Find the maximum value
+    // find max value in the records
     double maxValue = preferences.values().stream().max(Double::compare).orElse(1.0);
 
-    // Normalize all values
+    // normalize all values
     for (String key : new HashSet<>(preferences.keySet())) {
       preferences.put(key, preferences.get(key) / maxValue);
     }
@@ -103,22 +118,30 @@ public class BookEngine implements SearchEngine {
         System.out.println(cachedReadBook.component1());
       }
 
+      // Content- Based Filtering
       // boolean query builder
       BoolQuery.Builder booleanQueryBuilder = new BoolQuery.Builder();
 
       // simple query
       SimpleQueryStringQuery simpleQuery = buildSimpleStringQuery(query);
-      booleanQueryBuilder.should(simpleQuery._toQuery());
+      booleanQueryBuilder.should(simpleQuery._toQuery()).boost(CONTENT_WEIGHT);
 
-      // more like this query
-      if (!cachedReadBooks.isEmpty()) {
-        MoreLikeThisQuery moreLikeThisQuery = buildMoreLikeThisQuery(cachedReadBooks);
-        booleanQueryBuilder.should(moreLikeThisQuery._toQuery());
+      // author and genre preferences
+      if (!cachedReadBooks.isEmpty()
+          && (!genrePreferences.isEmpty() || !authorPreferences.isEmpty())) {
+        Query preferenceBoostQuery = buildPreferenceBoostQuery();
+        booleanQueryBuilder.should(preferenceBoostQuery);
       }
-
-      // complete query
-      Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
-
+      //
+      //      // more like this query
+      //      if (!cachedReadBooks.isEmpty()) {
+      //        MoreLikeThisQuery moreLikeThisQuery = buildMoreLikeThisQuery(cachedReadBooks);
+      //        booleanQueryBuilder.should(moreLikeThisQuery._toQuery());
+      //      }
+      //
+            // complete query
+            Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
+      //
       // search request
       SearchResponse<BookResponse> searchRequest =
           esClient.search(builder -> builder.index("books").query(searchQuery), BookResponse.class);
@@ -164,6 +187,46 @@ public class BookEngine implements SearchEngine {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Query that boosts results based on users favorite genres and authors
+   * @return query that uses favorite genres and authors
+   */
+  private Query buildPreferenceBoostQuery() {
+    BoolQuery.Builder preferenceBuilder = new BoolQuery.Builder();
+
+    // genre boosting query
+    genrePreferences.entrySet().stream()
+        .filter(entry -> entry.getValue() > 0.2) // Only use significant preferences
+        .forEach(
+            entry -> {
+              preferenceBuilder.should(
+                  new Query.Builder()
+                      .match(
+                          m ->
+                              m.field("genres")
+                                  .query(entry.getKey())
+                                  .boost(entry.getValue().floatValue()))
+                      .build());
+            });
+
+    // authors
+    authorPreferences.entrySet().stream()
+        .filter(entry -> entry.getValue() > 0.2)
+        .forEach(
+            entry -> {
+              preferenceBuilder.should(
+                  new Query.Builder()
+                      .match(
+                          m ->
+                              m.field("author")
+                                  .query(entry.getKey())
+                                  .boost(entry.getValue().floatValue()))
+                      .build());
+            });
+
+    return new Query.Builder().bool(preferenceBuilder.build()).build();
   }
 
   /**
