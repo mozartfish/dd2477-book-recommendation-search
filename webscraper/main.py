@@ -12,7 +12,7 @@ from elasticsearch import Elasticsearch
 class Review:
 
     stars: int
-    text: str
+    # text: str
 
 
 @dataclass
@@ -117,7 +117,7 @@ def scrape_book(url: str) -> Book | None:
         if reviewText is None:
             raise Exception("A review text was not found.")
         cleanedText = reviewText.text  # type: ignore
-        newReviews.append(Review(stars, cleanedText))  # type: ignore
+        newReviews.append(Review(stars))
     image_tag = soup.find("img", {"class": "ResponsiveImage"})
     image_src = image_tag["src"]  # type: ignore
     if image_src is None:
@@ -143,7 +143,7 @@ def scrape_book(url: str) -> Book | None:
 
 def scrape_best_books():
     for page in range(1, 101):
-
+        print(f"Page: {page}")
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
@@ -157,7 +157,7 @@ def scrape_best_books():
         books = soup.find_all("tr", {"itemtype": "http://schema.org/Book"})
         # print(test.text)
         bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=50) as executor:
             executor.map(scrape_and_process_book, bookLinks)
 
 
@@ -178,7 +178,7 @@ def sendToElastic(book: Book):
     client = Elasticsearch(
         hosts=["http://localhost:9200"],
         verify_certs=False,
-        basic_auth=["elastic", "PASSWORD"],  # type: ignore
+        basic_auth=["elastic", "Password"],  # type: ignore
         # api_key= ALTERNATIVE (USE ENCODED VERSION)
     )
 
