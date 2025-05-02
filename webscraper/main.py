@@ -178,7 +178,7 @@ def sendToElastic(book: Book):
     client = Elasticsearch(
         hosts=["http://localhost:9200"],
         verify_certs=False,
-        basic_auth=["elastic", "gg7onaIm"],  # type: ignore
+        basic_auth=["elastic", "VZR67fQ8"],  # type: ignore
         # api_key= ALTERNATIVE (USE ENCODED VERSION)
     )
 
