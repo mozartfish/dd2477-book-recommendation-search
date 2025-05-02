@@ -150,7 +150,6 @@ public class BookEngine implements SearchEngine {
 
       // complete query
       Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
-      System.out.println(searchQuery.toString());
       //
       // search request
       SearchResponse<BookResponse> searchRequest =
