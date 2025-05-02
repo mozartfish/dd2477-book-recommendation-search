@@ -5,7 +5,14 @@ from typing import List
 import requests
 from bs4 import BeautifulSoup
 from dataclasses import asdict, dataclass
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, NotFoundError
+
+client = Elasticsearch(
+    hosts=["http://localhost:9200"],
+    verify_certs=False,
+    basic_auth=["elastic", "mWQ787fk"],  # type: ignore
+    # api_key= ALTERNATIVE (USE ENCODED VERSION)
+)
 
 
 @dataclass
@@ -17,7 +24,7 @@ class Review:
 
 @dataclass
 class Book:
-
+    url: str
     title: str
     author: str
     authorLink: str
@@ -124,6 +131,7 @@ def scrape_book(url: str) -> Book | None:
         raise Exception("Image not found")
 
     book = Book(
+        url=url,
         title=title,
         author=author,
         authorLink=authorLinkHref,  # type: ignore
@@ -142,23 +150,35 @@ def scrape_book(url: str) -> Book | None:
 
 
 def scrape_best_books():
-    for page in range(1, 101):
-        print(f"Page: {page}")
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-        test = requests.get(
-            f"https://www.goodreads.com/list/show/1.Best_Books_Ever?page={page}",
-            headers=headers,
-        )
-        # print(test)
-        soup = BeautifulSoup(test.text, "html.parser")
+    linksToProcess = []
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        result = list(executor.map(process_page, [page for page in range(1, 101)]))
+        # result is a list of list of urls to books
+        for bookList in result:
+            for bookUrl in bookList:
+                linksToProcess.append(bookUrl)
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        executor.map(scrape_and_process_book, linksToProcess)
 
-        books = soup.find_all("tr", {"itemtype": "http://schema.org/Book"})
-        # print(test.text)
-        bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
-        with ThreadPoolExecutor(max_workers=50) as executor:
-            executor.map(scrape_and_process_book, bookLinks)
+
+def process_page(page: int) -> List[str]:
+    print(page)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    test = requests.get(
+        f"https://www.goodreads.com/list/show/1.Best_Books_Ever?page={page}",
+        headers=headers,
+    )
+    soup = BeautifulSoup(test.text, "html.parser")
+
+    books = soup.find_all("tr", {"itemtype": "http://schema.org/Book"})
+
+    bookLinks = ["https://www.goodreads.com" + book.find("a", {"class": "bookTitle"})["href"] for book in books]  # type: ignore
+
+    # filteredLinks = [link for link in bookLinks if not document_exists(link)]
+
+    return bookLinks
 
 
 def scrape_and_process_book(link: str):
@@ -174,13 +194,6 @@ def scrape_and_process_book(link: str):
 
 
 def sendToElastic(book: Book):
-    # es = Elasticsearch([{"host": "localhost", "port": 9200, "scheme": "https"}])
-    client = Elasticsearch(
-        hosts=["http://localhost:9200"],
-        verify_certs=False,
-        basic_auth=["elastic", "gg7onaIm"],  # type: ignore
-        # api_key= ALTERNATIVE (USE ENCODED VERSION)
-    )
 
     if not client.ping():
         raise Exception("could not connect to elasticsearch")
@@ -190,13 +203,20 @@ def sendToElastic(book: Book):
     client.index(index="books", body=book_dict)
 
 
+def document_exists(url: str) -> bool:
+    # does a query to check if a book with the exact url already exists
+    # it's used so the same book does not get scraped twice
+    query = {"query": {"term": {"url.keyword": url}}}
+    try:
+        response = client.search(index="books", body=query)
+    except NotFoundError:
+        # occurs for the first book when the book index has not been created yet
+        return False
+    result = response["hits"]["total"]["value"] > 0
+    if result:
+        print("Book already in database")
+    return result
+
+
 if __name__ == "__main__":
     scrape_best_books()
-    # book = scrape_book("https://www.goodreads.com/book/show/8852.Macbeth")
-    # sendToElastic(book)
-    # print(book.firstPublished)
-    # book_dict = asdict(book)
-
-    # book_json = json.dumps(book_dict, indent=4)
-
-    # print(book_json)
