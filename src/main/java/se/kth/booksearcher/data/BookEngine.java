@@ -27,15 +27,16 @@ public class BookEngine implements SearchEngine {
   HashMap<String, Double> authorPreferences = new HashMap<>();
 
   // boosting factors
-  public static final float CONTENT_WEIGHT = 0.4F;
-  public static final float USER_PREFERENCES_WEIGHT = 0.6F;
-  public static final float LESS_FREQUENTED_GENRES = 0.3F;
-  public static final float RATING_COUNT_WEIGHT = 0.2F;
+  public static final float CONTENT_WEIGHT = 1F;
+  public static final float USER_PREFERENCES_WEIGHT_1 = 0.2F;
+  public static final float USER_PREFERENCES_WEIGHT_2 = 0.2F;
+  public static final float LESS_FREQUENTED_GENRES = 0.4F;
+  public static final float RATING_COUNT_WEIGHT = 0.4F;
 
   public BookEngine() {
     esClient =
         ElasticsearchClient.of(
-            b -> b.host(serverUrl).usernameAndPassword("elastic", "gg7onaIm")
+            b -> b.host(serverUrl).usernameAndPassword("elastic", "VZR67fQ8")
             //                .apiKey() alternative
             );
   }
@@ -124,7 +125,7 @@ public class BookEngine implements SearchEngine {
 
       // simple query
       SimpleQueryStringQuery simpleQuery = buildSimpleStringQuery(query);
-      booleanQueryBuilder.should(simpleQuery._toQuery()).boost(CONTENT_WEIGHT);
+      booleanQueryBuilder.should(simpleQuery._toQuery());
 
       // author and genre preferences
       if (!cachedReadBooks.isEmpty()
@@ -134,23 +135,22 @@ public class BookEngine implements SearchEngine {
       }
 
       // boost less frequented genres
-      Query lessFrequentedGenreQuery = buildHiddenGenresQuery();
-      booleanQueryBuilder.should(lessFrequentedGenreQuery).boost(LESS_FREQUENTED_GENRES);
+      Query lessFrequentedGenreQuery = buildDiverseGenresQuery();
+      booleanQueryBuilder.should(lessFrequentedGenreQuery);
 
       // Collaborative Filtering
       // more like this query
       if (!cachedReadBooks.isEmpty()) {
         MoreLikeThisQuery moreLikeThisQuery = buildMoreLikeThisQuery(cachedReadBooks);
-        booleanQueryBuilder.should(moreLikeThisQuery._toQuery()).boost(USER_PREFERENCES_WEIGHT);
+        booleanQueryBuilder.should(moreLikeThisQuery._toQuery());
       }
 
       // popularity - based on the number of reviews (review count field)
       Query reviewPopularityQuery = buildPopularityBoostQuery();
-      booleanQueryBuilder.should(reviewPopularityQuery).boost(RATING_COUNT_WEIGHT);
+      booleanQueryBuilder.should(reviewPopularityQuery);
 
       // complete query
       Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
-      //
       // search request
       SearchResponse<BookResponse> searchRequest =
           esClient.search(builder -> builder.index("books").query(searchQuery), BookResponse.class);
@@ -168,7 +168,7 @@ public class BookEngine implements SearchEngine {
    *
    * @return
    */
-  private Query buildHiddenGenresQuery() {
+  private Query buildDiverseGenresQuery() {
     HashMap<String, Double> lessFrequentedGenres = new HashMap<>();
 
     // Find genres that are less frequently read
@@ -176,18 +176,17 @@ public class BookEngine implements SearchEngine {
         .filter(entry -> entry.getValue() > 0.1 && entry.getValue() < 0.4)
         .forEach(entry -> lessFrequentedGenres.put(entry.getKey(), 0.3));
 
-    BoolQuery.Builder diversityBuilder = new BoolQuery.Builder();
+    BoolQuery.Builder diverseGenreBuilder = new BoolQuery.Builder();
 
     // boost each genre
     for (HashMap.Entry<String, Double> entry : lessFrequentedGenres.entrySet()) {
-      diversityBuilder.should(
-          new Query.Builder()
-              .match(
-                  m -> m.field("genres").query(entry.getKey()).boost(entry.getValue().floatValue()))
-              .build());
+      diverseGenreBuilder.should(q -> q.
+              match(m -> m.
+                      field("genres").query(entry.getKey()).boost(entry.getValue().floatValue())))
+              .boost(LESS_FREQUENTED_GENRES);
     }
 
-    return new Query.Builder().bool(diversityBuilder.build()).build();
+    return new Query.Builder().bool(diverseGenreBuilder.build()).build();
   }
 
   /**
@@ -207,7 +206,7 @@ public class BookEngine implements SearchEngine {
                                 fvf ->
                                     fvf.field("ratingsCount") // rating count for popularity
                                         .modifier(FieldValueFactorModifier.Log1p) // log scaling
-                                        .factor(0.4))))
+                                        .factor((double) RATING_COUNT_WEIGHT))))
         .build();
   }
 
@@ -217,7 +216,7 @@ public class BookEngine implements SearchEngine {
    * @return query that uses favorite genres and authors
    */
   private Query buildPreferenceBoostQuery() {
-    BoolQuery.Builder preferenceBuilder = new BoolQuery.Builder();
+    BoolQuery.Builder preferenceBuilder = new BoolQuery.Builder().boost(USER_PREFERENCES_WEIGHT_1);
 
     // genre boosting query
     genrePreferences.entrySet().stream()
@@ -295,7 +294,7 @@ public class BookEngine implements SearchEngine {
     return new MoreLikeThisQuery.Builder()
         .fields(List.of("author", "genres", "description"))
         .like(likeDocuments)
-        .boost(0.5F) // weight given to personalization
+        .boost(USER_PREFERENCES_WEIGHT_2) // weight given to personalization
         .minTermFreq(1) // include terms that appear at least once
         .maxQueryTerms(15) // get top terms to influence the search
         .minimumShouldMatch("30%") // results contain at least 30% of the query terms
@@ -311,7 +310,7 @@ public class BookEngine implements SearchEngine {
   private SimpleQueryStringQuery buildSimpleStringQuery(@NotNull String query) {
     return new SimpleQueryStringQuery.Builder()
         .fields(List.of("author", "description", "genres", "title"))
-        .query(query)
+        .query(query).boost(BookEngine.CONTENT_WEIGHT)
         .build();
   }
 
