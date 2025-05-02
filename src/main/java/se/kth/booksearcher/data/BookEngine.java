@@ -36,7 +36,7 @@ public class BookEngine implements SearchEngine {
   public BookEngine() {
     esClient =
         ElasticsearchClient.of(
-            b -> b.host(serverUrl).usernameAndPassword("elastic", "mWQ787fk")
+            b -> b.host(serverUrl).usernameAndPassword("elastic", "VZR67fQ8")
             //                .apiKey() alternative
             );
   }
@@ -135,7 +135,7 @@ public class BookEngine implements SearchEngine {
       }
 
       // boost less frequented genres
-      Query lessFrequentedGenreQuery = buildHiddenGenresQuery();
+      Query lessFrequentedGenreQuery = buildDiverseGenresQuery();
       booleanQueryBuilder.should(lessFrequentedGenreQuery);
 
       // Collaborative Filtering
@@ -168,7 +168,7 @@ public class BookEngine implements SearchEngine {
    *
    * @return
    */
-  private Query buildHiddenGenresQuery() {
+  private Query buildDiverseGenresQuery() {
     HashMap<String, Double> lessFrequentedGenres = new HashMap<>();
 
     // Find genres that are less frequently read
@@ -176,17 +176,17 @@ public class BookEngine implements SearchEngine {
         .filter(entry -> entry.getValue() > 0.1 && entry.getValue() < 0.4)
         .forEach(entry -> lessFrequentedGenres.put(entry.getKey(), 0.3));
 
-    BoolQuery.Builder diversityBuilder = new BoolQuery.Builder();
+    BoolQuery.Builder diverseGenreBuilder = new BoolQuery.Builder();
 
     // boost each genre
     for (HashMap.Entry<String, Double> entry : lessFrequentedGenres.entrySet()) {
-      diversityBuilder.should(q -> q.
+      diverseGenreBuilder.should(q -> q.
               match(m -> m.
                       field("genres").query(entry.getKey()).boost(entry.getValue().floatValue())))
               .boost(LESS_FREQUENTED_GENRES);
     }
 
-    return new Query.Builder().bool(diversityBuilder.build()).build();
+    return new Query.Builder().bool(diverseGenreBuilder.build()).build();
   }
 
   /**
