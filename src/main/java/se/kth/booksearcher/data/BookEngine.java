@@ -27,10 +27,11 @@ public class BookEngine implements SearchEngine {
   HashMap<String, Double> authorPreferences = new HashMap<>();
 
   // boosting factors
-  public static final float CONTENT_WEIGHT = 0.4F;
-  public static final float USER_PREFERENCES_WEIGHT = 0.6F;
-  public static final float LESS_FREQUENTED_GENRES = 0.3F;
-  public static final float RATING_COUNT_WEIGHT = 0.2F;
+  public static final float CONTENT_WEIGHT = 1F;
+  public static final float USER_PREFERENCES_WEIGHT_1 = 0.2F;
+  public static final float USER_PREFERENCES_WEIGHT_2 = 0.2F;
+  public static final float LESS_FREQUENTED_GENRES = 0.4F;
+  public static final float RATING_COUNT_WEIGHT = 0.4F;
 
   public BookEngine() {
     esClient =
@@ -150,7 +151,6 @@ public class BookEngine implements SearchEngine {
 
       // complete query
       Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
-      //
       // search request
       SearchResponse<BookResponse> searchRequest =
           esClient.search(builder -> builder.index("books").query(searchQuery), BookResponse.class);
@@ -216,7 +216,7 @@ public class BookEngine implements SearchEngine {
    * @return query that uses favorite genres and authors
    */
   private Query buildPreferenceBoostQuery() {
-    BoolQuery.Builder preferenceBuilder = new BoolQuery.Builder();
+    BoolQuery.Builder preferenceBuilder = new BoolQuery.Builder().boost(USER_PREFERENCES_WEIGHT_1);
 
     // genre boosting query
     genrePreferences.entrySet().stream()
@@ -294,7 +294,7 @@ public class BookEngine implements SearchEngine {
     return new MoreLikeThisQuery.Builder()
         .fields(List.of("author", "genres", "description"))
         .like(likeDocuments)
-        .boost(USER_PREFERENCES_WEIGHT) // weight given to personalization
+        .boost(USER_PREFERENCES_WEIGHT_2) // weight given to personalization
         .minTermFreq(1) // include terms that appear at least once
         .maxQueryTerms(15) // get top terms to influence the search
         .minimumShouldMatch("30%") // results contain at least 30% of the query terms
