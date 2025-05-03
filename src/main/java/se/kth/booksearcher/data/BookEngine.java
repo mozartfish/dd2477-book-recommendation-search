@@ -30,6 +30,8 @@ public class BookEngine implements SearchEngine {
   public static final float USER_PREFERENCES_WEIGHT_2 = 0.2F;
   public static final float LESS_FREQUENTED_GENRES = 0.4F;
   public static final float RATING_COUNT_WEIGHT = 0.4F;
+  public static final int NUMBER_OF_RESULTS = 10;
+
 
   public BookEngine() {
     esClient =
@@ -154,7 +156,7 @@ public class BookEngine implements SearchEngine {
           esClient.search(builder -> builder.index("books").size(20).query(searchQuery), BookResponse.class);
 
       // process query and return result
-      return queryResult(searchRequest, 10);
+      return queryResult(searchRequest, NUMBER_OF_RESULTS);
 
     } catch (IOException e) {
       throw new RuntimeException(e);
