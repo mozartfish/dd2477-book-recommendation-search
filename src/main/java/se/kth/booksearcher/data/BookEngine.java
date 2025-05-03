@@ -9,10 +9,8 @@ import kotlin.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class BookEngine implements SearchEngine {
   String serverUrl = "http://localhost:9200"; // todo: why does it need ot be http and not https?
@@ -36,7 +34,7 @@ public class BookEngine implements SearchEngine {
   public BookEngine() {
     esClient =
         ElasticsearchClient.of(
-            b -> b.host(serverUrl).usernameAndPassword("elastic", "VZR67fQ8")
+            b -> b.host(serverUrl).usernameAndPassword("elastic", "mWQ787fk")
             //                .apiKey() alternative
             );
   }
@@ -153,10 +151,10 @@ public class BookEngine implements SearchEngine {
       Query searchQuery = new Query.Builder().bool(booleanQueryBuilder.build()).build();
       // search request
       SearchResponse<BookResponse> searchRequest =
-          esClient.search(builder -> builder.index("books").query(searchQuery), BookResponse.class);
+          esClient.search(builder -> builder.index("books").size(20).query(searchQuery), BookResponse.class);
 
       // process query and return result
-      return queryResult(searchRequest);
+      return queryResult(searchRequest, 10);
 
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -253,20 +251,30 @@ public class BookEngine implements SearchEngine {
 
   /**
    * Return a list of books to recommend to the user
+   * Removes duplicate books with same name and author
+   * Note: Only returns the first 10 results currently
    *
    * @param searchRequest the elastic search request
+   * @param maximumNrOfResults Maximum amount of results that will be in the result list
    * @return a list of books
    */
-  private @NotNull List<Book> queryResult(SearchResponse<BookResponse> searchRequest) {
+  private @NotNull List<Book> queryResult(SearchResponse<BookResponse> searchRequest, Integer maximumNrOfResults) {
+    Set<Pair<String, String>> seenBooks = new HashSet<>();
+
     return searchRequest.hits().hits().stream()
-        .map(
-            hit -> {
+            .filter(hit -> {
+              BookResponse source = hit.source();
+              assert source != null;
+              return seenBooks.add(new Pair<>(source.author(), source.title()));
+            })
+            .map(hit -> {
               BookResponse source = hit.source();
               assert source != null;
               return new Book(source, hit.id());
-            })
-        .toList();
+            }).limit(maximumNrOfResults)
+            .toList();
   }
+
 
   /**
    * Construct a more like this query to refine the results based on the previous books the user has
