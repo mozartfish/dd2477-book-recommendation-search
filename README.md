@@ -10,7 +10,7 @@ Java 23 is required
 
 In order for the java program to be able to connect to the Elasticsearch instance the credentials need to be placed in file `src/main/java/se/kth/booksearcher/data/BookEngine.java` on line 39
 
-Run the application like a standard gradle project
+Run the application like a standard gradle project through `src/main/kotlin/main.kt` (With Intellij, just select the main.kt and press run )
 
 ## How to run Webscraper
 (Elasticsearch needs to be running)
